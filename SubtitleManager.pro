@@ -24,8 +24,18 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    subtitleio.cpp \
+    subtitles.cpp \
+    srtio.cpp \
+    interval.cpp \
+    subtitle.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+    subtitleio.h \
+    subtitles.h \
+    srtio.h \
+    interval.h \
+    subtitle.h
 
 FORMS    += mainwindow.ui
