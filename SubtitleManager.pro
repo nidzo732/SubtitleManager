@@ -29,13 +29,49 @@ SOURCES += main.cpp\
     subtitles.cpp \
     srtio.cpp \
     interval.cpp \
-    subtitle.cpp
+    subtitle.cpp \
+    tableviewmodel.cpp \
+    dvdio.cpp \
+    paramquestion.cpp \
+    subio.cpp \
+    subtitleprocessing.cpp \
+    titlemerge.cpp \
+    titlesplit.cpp \
+    titleshift.cpp \
+    infowindow.cpp
 
 HEADERS  += mainwindow.h \
     subtitleio.h \
     subtitles.h \
     srtio.h \
     interval.h \
-    subtitle.h
+    subtitle.h \
+    tableviewmodel.h \
+    dvdio.h \
+    paramquestion.h \
+    subio.h \
+    subtitleprocessing.h \
+    titlemerge.h \
+    titlesplit.h \
+    titleshift.h \
+    infowindow.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    paramquestion.ui \
+    titlemerge.ui \
+    titlesplit.ui \
+    titleshift.ui \
+    infowindow.ui
+
+RESOURCES += \
+    icons.qrc
+
+DISTFILES += \
+    icons/delete.ico \
+    icons/edit.ico \
+    icons/info.ico \
+    icons/insert.ico \
+    icons/new.ico \
+    SubtitleManager.rc
+
+RC_FILE = SubtitleManager.rc

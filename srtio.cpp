@@ -15,22 +15,25 @@ enum ReadStep {BEGAN, READ_NUMBER, READ_EMPTY, READ_TIME, READ_SENTENCE};
 SrtIO::SrtIO(){}
 
 
-Subtitles SrtIO::Read(QTextStream &inputStream, bool tryOnly, bool &ok) const
+Subtitles SrtIO::Read(QTextStream &inputStream, bool tryOnly, bool &ok, std::vector<int>) const
 {
     Subtitles toReturn;
     Subtitle current;
+    Subtitles::iterator dummy;
     ReadStep status=BEGAN;
+    int prevSeq=Interval::UNKNOWN;
     ok=false;
     while(!inputStream.atEnd())
     {
         QString line=inputStream.readLine();
+        while(line.endsWith("\n") || line.endsWith("\n")) line=line.left(line.length()-1);
         QString trimmed=QString(line).replace(QRegularExpression("\\s"), "");
         if(trimmed.startsWith("#")) continue;
         if(trimmed.length()==0)
         {
             if(current.getContent().length()>0)
             {
-                toReturn.insert(current);
+                toReturn.insert(current, false, dummy);
             }
             status=READ_EMPTY;
             current=Subtitle();
@@ -40,6 +43,7 @@ Subtitles SrtIO::Read(QTextStream &inputStream, bool tryOnly, bool &ok) const
             if(status==READ_EMPTY || status==READ_NUMBER || status==BEGAN)
             {
                 status=READ_NUMBER;
+                prevSeq=trimmed.toInt();
             }
             else
             {
@@ -53,11 +57,12 @@ Subtitles SrtIO::Read(QTextStream &inputStream, bool tryOnly, bool &ok) const
             {
                 if(current.getContent().length()>0)
                 {
-                    toReturn.insert(current);
+                    toReturn.insert(current, false, dummy);
                 }
                 status=READ_TIME;
                 current=Subtitle();
-                current.setTime(parseInterval(trimmed));
+                current.setTime(parseInterval(trimmed, prevSeq));
+                prevSeq=Interval::UNKNOWN;
                 if(tryOnly)
                 {
                     ok=true;
@@ -84,34 +89,38 @@ Subtitles SrtIO::Read(QTextStream &inputStream, bool tryOnly, bool &ok) const
     }
     if(current.getContent().length()>0)
     {
-        toReturn.insert(current);
+        toReturn.insert(current, false, dummy);
     }
-    auto validationStatus=toReturn.repairAndValidate(Subtitles::ValidationProblem::OK, 0);
-    ok=validationStatus==Subtitles::ValidationProblem::OK;
+    ok=false;
     return toReturn;
 }
-Subtitles SrtIO::Read(QTextStream &inputStream) const
+Subtitles SrtIO::Read(QTextStream &inputStream, std::vector<int> params) const
 {
     bool dummyOk;
-    return Read(inputStream, false, dummyOk);
+    return Read(inputStream, false, dummyOk, params);
 }
 
 bool SrtIO::Try(QTextStream &inputStream) const
 {
     bool ok;
-    Read(inputStream, true, ok);
+    Read(inputStream, true, ok, std::vector<int>());
     inputStream.seek(0);
     return ok;
 }
 
-void SrtIO::Write(QTextStream &outputStream, Subtitles subtitles) const
+void SrtIO::Write(QTextStream &outputStream, Subtitles &subtitles,std::vector<int>) const
 {
     int id=1;
     for(auto title: subtitles)
     {
         outputStream<<id<<'\n';
         outputStream<<printTime(title.getTime().getStart())<<" --> "<<printTime(title.getTime().getEnd())<<'\n';
-        outputStream<<QString(title.getContent()).replace("<br/>","\n")<<"\n\n";
+        outputStream<<QString(title.getContent()).replace("<br/>","\n")<<'\n';
+        if(!(title.getContent().endsWith("\n") ||title.getContent().endsWith("<br/>")))
+        {
+            outputStream<<'\n';
+        }
+        id++;
     }
 }
 int SrtIO::parseTime(QString time)
@@ -126,10 +135,10 @@ int SrtIO::parseTime(QString time)
     return (int)((hh*3600+mm*60+ss)*1000);
 }
 
-Interval SrtIO::parseInterval(QString interval)
+Interval SrtIO::parseInterval(QString interval, int seq)
 {
     timeline.indexIn(interval);
-    return Interval(parseTime(timeline.cap(1)), parseTime(timeline.cap(3)));
+    return Interval(parseTime(timeline.cap(1)), parseTime(timeline.cap(3)), seq);
 }
 QString SrtIO::printTime(int time)
 {
@@ -141,7 +150,15 @@ QString SrtIO::printTime(int time)
     int minutes=time%60;
     time/=60;
     int hours=time;
-    return QString::number(hours)+":"+QString::number(minutes)+":"+QString::number(seconds)+","+QString::number(milis);
+    QString hoursString = QString::number(hours);
+    while(hoursString.length()<2) hoursString="0"+hoursString;
+    QString minutesString = QString::number(minutes);
+    while(minutesString.length()<2) minutesString="0"+minutesString;
+    QString secondsString = QString::number(seconds);
+    while(secondsString.length()<2) secondsString="0"+secondsString;
+    QString milisString = QString::number(milis);
+    while(milisString.length()<3) milisString="0"+milisString;
+    return hoursString+":"+minutesString+":"+secondsString+","+milisString;
 }
 
 const SrtIO* SrtIO::getInstance()
@@ -160,5 +177,5 @@ QStringList SrtIO::GetSupportedFormats() const
 }
 QString SrtIO::GetDescriptiveName() const
 {
-    return "SRT file";
+    return "SRT subtitle";
 }

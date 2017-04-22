@@ -17,6 +17,10 @@ public:
             myIter=iter;
         }
     public:
+        iterator()
+        {
+
+        }
         iterator(const iterator &i)=default;
         iterator& operator=(const iterator &i)=default;
         iterator& operator++()
@@ -30,11 +34,22 @@ public:
             ++myIter;
             return myCopy;
         }
-        bool operator==(const iterator i)
+        iterator& operator--()
+        {
+            --myIter;
+            return *this;
+        }
+        iterator operator--(int)
+        {
+            iterator myCopy=*this;
+            --myIter;
+            return myCopy;
+        }
+        bool operator==(const iterator i) const
         {
             return myIter==i.myIter;
         }
-        bool operator!=(const iterator i)
+        bool operator!=(const iterator i) const
         {
             return myIter!=i.myIter;
         }
@@ -42,6 +57,19 @@ public:
         {
             return (*myIter);
         }
+        int operator-(const iterator &i) const
+        {
+            return myIter-i.myIter;
+        }
+        iterator operator+(int i) const
+        {
+            return myIter+i;
+        }
+        iterator operator-(int i) const
+        {
+            return myIter-i;
+        }
+
         friend class Subtitles;
     };
 
@@ -50,9 +78,11 @@ public:
     iterator before(int milis);
     iterator begin();
     iterator end();
-    ValidationProblem insert(Subtitle s);
+    iterator operator[](int index);
+    ValidationProblem insert(Subtitle s, bool validate, iterator &position);
     void remove(iterator iter);
     ValidationProblem repairAndValidate(int fix=ValidationProblem::OK, int recurseTo=5);
+    static QString getProblemDescription(ValidationProblem problem);
 private:
     std::vector<Subtitle> subtitles;
     ValidationProblem status=PARSE_FAILURE;

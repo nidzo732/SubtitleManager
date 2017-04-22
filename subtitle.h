@@ -6,7 +6,7 @@
 class Subtitle
 {
 public:
-    Subtitle(Interval time=Interval(Interval::UNKNOWN, Interval::UNKNOWN), QString content="");
+    Subtitle(Interval time=Interval(Interval::UNKNOWN, Interval::UNKNOWN, Interval::UNKNOWN), QString content=QString(""));
     QString& getContent();
     void setContent(QString content);
     Interval& getTime();

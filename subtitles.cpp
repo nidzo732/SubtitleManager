@@ -2,7 +2,7 @@
 #include<algorithm>
 #include "subtitles.h"
 
-#define DEFAULT_LENGTH 5000
+#define DEFAULT_LENGTH 3000
 using namespace std;
 
 Subtitles::Subtitles()
@@ -12,19 +12,34 @@ Subtitles::Subtitles()
 
 Subtitles::iterator Subtitles::after(int milis)
 {
-    return lower_bound(subtitles.begin(), subtitles.end(), Subtitle(Interval(milis, Interval::UNKNOWN)));
+    return lower_bound(subtitles.begin(), subtitles.end(), Subtitle(Interval(milis, Interval::UNKNOWN, Interval::UNKNOWN)));
 }
 
 Subtitles::iterator Subtitles::before(int milis)
 {
-    return upper_bound(subtitles.begin(), subtitles.end(), Subtitle(Interval(milis, Interval::UNKNOWN)));
+    return upper_bound(subtitles.begin(), subtitles.end(), Subtitle(Interval(milis+1, Interval::UNKNOWN, Interval::UNKNOWN)));
 }
 
-Subtitles::ValidationProblem Subtitles::insert(Subtitle s)
+Subtitles::ValidationProblem Subtitles::insert(Subtitle s, bool validate, iterator &position)
 {
     subtitles.push_back(s);
-    sort(subtitles.begin(), subtitles.end());
-    return ValidationProblem::OK;
+    if(validate)
+    {
+        for(auto iter=subtitles.begin();iter!=subtitles.end();iter++)
+        {
+            if((*iter).getTime()==s.getTime())
+            {
+                position=iterator(iter);
+            }
+        }
+        ValidationProblem status=repairAndValidate();
+        position=iterator(find_if(this->subtitles.begin(), this->subtitles.end(), [&s](Subtitle q)->bool{return q.getTime()==s.getTime();}));
+        return status;
+    }
+    else
+    {
+        return ValidationProblem::OK;
+    }
 }
 
 void Subtitles::remove(Subtitles::iterator iter)
@@ -35,6 +50,7 @@ void Subtitles::remove(Subtitles::iterator iter)
 Subtitles::ValidationProblem Subtitles::repairAndValidate(int ignore, int recurseTo)
 {
     int fixcount=0;
+    sort(subtitles.begin(), subtitles.end());
     vector<Subtitle>::iterator prev=subtitles.end(), next=subtitles.end(), current=subtitles.begin();
     next=current;
     if(next!=subtitles.end()) next++;
@@ -51,7 +67,14 @@ Subtitles::ValidationProblem Subtitles::repairAndValidate(int ignore, int recurs
             }
             if(prev!=subtitles.end())
             {
-                currentTitle.getTime().setStart((*prev).getTime().getEnd());
+                if(currentTitle.getTime().getOffsetHint()!=Interval::UNKNOWN)
+                {
+                    currentTitle.getTime().setStart((*prev).getTime().getEnd()+currentTitle.getTime().getOffsetHint());
+                }
+                else
+                {
+                    currentTitle.getTime().setStart((*prev).getTime().getEnd());
+                }
             }
             else
             {
@@ -66,7 +89,11 @@ Subtitles::ValidationProblem Subtitles::repairAndValidate(int ignore, int recurs
                 status=ValidationProblem::UNKNOWN_TIMES;
                 return ValidationProblem::UNKNOWN_TIMES;
             }
-            if(next!=subtitles.end())
+            if(currentTitle.getTime().getDurationHint()!=Interval::UNKNOWN)
+            {
+                (*current).getTime().setEnd((*current).getTime().getStart()+currentTitle.getTime().getDurationHint());
+            }
+            else if(next!=subtitles.end() && (*next).getTime().getEnd()!=Interval::UNKNOWN)
             {
                 (*current).getTime().setEnd((*next).getTime().getStart());
             }
@@ -130,15 +157,22 @@ Subtitles::ValidationProblem Subtitles::repairAndValidate(int ignore, int recurs
         }
         prev=current;
     }
-    /*vector<Subtitle> newMap;
-    for(auto title:subtitles)
-    {
-        newMap[title.second.getTime()]=title.second;
-    }
-    subtitles=newMap;*/
     sort(subtitles.begin(), subtitles.end());
     if(fixcount==0)
     {
+        for(Subtitle& title:subtitles)
+        {
+            QString content=title.getContent();
+            while(content.endsWith("\n") || content.endsWith(" ") || content.endsWith("\r"))
+            {
+                content=content.left(content.length()-1);
+            }
+            while(content.endsWith("<br/>"))
+            {
+                content=content.left(content.length()-5);
+            }
+            title.setContent(content);
+        }
         this->status=ValidationProblem::OK;
         return ValidationProblem::OK;
     }
@@ -159,4 +193,30 @@ Subtitles::iterator Subtitles::begin()
 Subtitles::iterator Subtitles::end()
 {
     return iterator(subtitles.end());
+}
+Subtitles::iterator Subtitles::operator[](int index)
+{
+    return iterator(subtitles.begin()+index);
+}
+QString Subtitles::getProblemDescription(Subtitles::ValidationProblem problem)
+{
+    switch(problem)
+    {
+        case Subtitles::INTERVALS_OVERLAP:
+            return "sentences overlap in time";
+            break;
+        case Subtitles::INVALID_TIMES:
+            return "some time marks are invalid";
+            break;
+        case Subtitles::UNKNOWN_TIMES:
+            return "some sentences have unknown appearance times";
+            break;
+        case Subtitles::PARSE_FAILURE:
+            return "failed to parse subtitles";
+            break;
+        case Subtitles::OK:
+        default:
+            return "everything OK";
+            break;
+    }
 }

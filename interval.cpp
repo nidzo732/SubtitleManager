@@ -1,25 +1,24 @@
 #include "interval.h"
 
-Interval::Interval(int milisStart, int milisEnd)
+Interval::Interval(int milisStart, int milisEnd, int tSeq, int durationHint, int offsetHint)
 {
     start=milisStart;
     end=milisEnd;
+    seq=tSeq;
+    this->durationHint=durationHint;
+    this->offsetHint=offsetHint;
 }
 bool Interval::operator<(const Interval &i) const
 {
-    if(i.start!=UNKNOWN)
+    if(i.start!=UNKNOWN && start!=UNKNOWN)
     {
-        if(start!=UNKNOWN) return start<i.start;
-        else if(end!=UNKNOWN) return end<i.start;
-        return true;
+        return start<i.start;
     }
-    if(i.end!=UNKNOWN)
+    if(i.end!=UNKNOWN && end!=UNKNOWN)
     {
-        if(end!=UNKNOWN) return end<i.end;
-        else if(start!=UNKNOWN) return start<i.end;
-        return true;
+        return end<i.end;
     }
-    return true;
+    return seq<i.seq;
 }
 
 bool Interval::operator>(const Interval &i) const
@@ -28,7 +27,15 @@ bool Interval::operator>(const Interval &i) const
 }
 bool Interval::operator ==(const Interval &i) const
 {
-    return start==i.start && end==i.end;
+    if(start!=UNKNOWN && end!=UNKNOWN &&
+       i.start!=UNKNOWN && i.end!=UNKNOWN)
+    {
+        return start==i.start && end==i.end;
+    }
+    else
+    {
+        return seq!=UNKNOWN && i.seq!=UNKNOWN && i.seq==seq;
+    }
 }
 
 QString Interval::toStringEnd() const
@@ -75,4 +82,12 @@ QString Interval::timeToString(int milis)
     while(minutesS.length()<2) minutesS="0"+minutesS;
     while(hoursS.length()<2) hoursS="0"+hoursS;
     return hoursS+":"+minutesS+":"+secondsS+"."+milisS;
+}
+int Interval::getDurationHint() const
+{
+    return durationHint;
+}
+int Interval::getOffsetHint() const
+{
+    return offsetHint;
 }
